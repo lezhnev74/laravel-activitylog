@@ -15,7 +15,16 @@ This fork contains improvement which allows to track `event_type` field in activ
  
  With this fork it is possible:
  ```php
- $events = Activity::forEventType('LOGIN')->forSubject($model)->get();
+ $events = Activity::forEventType('LOGIN')
+                     ->forSubject($model)
+                     ->get();
+ 
+ // and
+  
+ activity()->performedOn($model)
+           ->causedBy($target_user)
+           ->withEventType('LOGIN')
+           ->log("User logged in");
  ```
 
 # ORIGINAL README
