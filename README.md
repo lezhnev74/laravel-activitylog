@@ -8,6 +8,17 @@
 [![StyleCI](https://styleci.io/repos/61802818/shield)](https://styleci.io/repos/61802818)
 [![Total Downloads](https://img.shields.io/packagist/dt/spatie/laravel-activitylog.svg?style=flat-square)](https://packagist.org/packages/spatie/laravel-activitylog)
 
+# FORKED with purpose
+This fork contains improvement which allows to track `event_type` field in activities table. This lets us to filter undesired events by it's type (for complex searches).
+ 
+ This is an edge case and I am not going to PR this back to original repo.
+ 
+ With this fork it is possible:
+ ```php
+ $events = Activity::forEventType('LOGIN')->forSubject($model)->get();
+ ```
+
+# ORIGINAL README
 The `spatie/laravel-activitylog` package provides easy to use functions to log the activities of the users of your app. It can also automatically log model events. All activity will be stored in the `activity_log` table.
 
 Here's a litte demo of how you can use it:

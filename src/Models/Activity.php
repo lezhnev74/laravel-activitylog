@@ -89,4 +89,17 @@ class Activity extends Eloquent
             ->where('subject_type', get_class($subject))
             ->where('subject_id', $subject->getKey());
     }
+    
+    /**
+     * Scope a query to only include activities for a given subject.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param string $event_type
+     *
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeForEventType(Builder $query, string $event_type): Builder
+    {
+        return $query->where('event_type', $event_type);
+    }
 }
