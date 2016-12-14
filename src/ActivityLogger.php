@@ -12,55 +12,58 @@ use Spatie\Activitylog\Models\Activity;
 class ActivityLogger
 {
     use Macroable;
-
+    
     /** @var \Illuminate\Auth\AuthManager */
     protected $auth;
-
+    
     protected $logName = '';
-
+    
     /** @var bool */
     protected $logEnabled;
-
+    
     /** @var \Illuminate\Database\Eloquent\Model */
     protected $performedOn;
-
+    
     /** @var \Illuminate\Database\Eloquent\Model */
     protected $causedBy;
-
+    
     /** @var \Illuminate\Support\Collection */
     protected $properties;
-
+    
+    /** @var  string */
+    protected $event_type;
+    
     public function __construct(AuthManager $auth, Repository $config)
     {
         $this->auth = $auth;
-
+        
         $this->properties = collect();
-
+        
         $authDriver = $config['laravel-activitylog']['default_auth_driver'] ?? $auth->getDefaultDriver();
-
-        if (starts_with(app()->version(), '5.1')) {
+        
+        if(starts_with(app()->version(), '5.1')) {
             $this->causedBy = $auth->driver($authDriver)->user();
         } else {
             $this->causedBy = $auth->guard($authDriver)->user();
         }
-
+        
         $this->logName = $config['laravel-activitylog']['default_log_name'];
-
+        
         $this->logEnabled = $config['laravel-activitylog']['enabled'] ?? true;
     }
-
+    
     public function performedOn(Model $model)
     {
         $this->performedOn = $model;
-
+        
         return $this;
     }
-
+    
     public function on(Model $model)
     {
         return $this->performedOn($model);
     }
-
+    
     /**
      * @param \Illuminate\Database\Eloquent\Model|int|string $modelOrId
      *
@@ -69,17 +72,25 @@ class ActivityLogger
     public function causedBy($modelOrId)
     {
         $model = $this->normalizeCauser($modelOrId);
-
+        
         $this->causedBy = $model;
-
+        
         return $this;
     }
-
+    
     public function by($modelOrId)
     {
         return $this->causedBy($modelOrId);
     }
-
+    
+    
+    public function withEventType(string $event_type)
+    {
+        $this->event_type = $event_type;
+        
+        return $this;
+    }
+    
     /**
      * @param array|\Illuminate\Support\Collection $properties
      *
@@ -88,10 +99,10 @@ class ActivityLogger
     public function withProperties($properties)
     {
         $this->properties = collect($properties);
-
+        
         return $this;
     }
-
+    
     /**
      * @param string $key
      * @param mixed  $value
@@ -101,22 +112,22 @@ class ActivityLogger
     public function withProperty(string $key, $value)
     {
         $this->properties->put($key, $value);
-
+        
         return $this;
     }
-
+    
     public function useLog(string $logName)
     {
         $this->logName = $logName;
-
+        
         return $this;
     }
-
+    
     public function inLog(string $logName)
     {
         return $this->useLog($logName);
     }
-
+    
     /**
      * @param string $description
      *
@@ -124,31 +135,33 @@ class ActivityLogger
      */
     public function log(string $description)
     {
-        if (! $this->logEnabled) {
+        if(!$this->logEnabled) {
             return;
         }
-
+        
         $activity = ActivitylogServiceProvider::getActivityModelInstance();
-
-        if ($this->performedOn) {
+        
+        if($this->performedOn) {
             $activity->subject()->associate($this->performedOn);
         }
-
-        if ($this->causedBy) {
+        
+        if($this->causedBy) {
             $activity->causer()->associate($this->causedBy);
         }
-
+        
         $activity->properties = $this->properties;
-
+        
         $activity->description = $this->replacePlaceholders($description, $activity);
-
+        
         $activity->log_name = $this->logName;
-
+        
+        $activity->event_type = $this->event_type;
+        
         $activity->save();
-
+        
         return $activity;
     }
-
+    
     /**
      * @param \Illuminate\Database\Eloquent\Model|int|string $modelOrId
      *
@@ -158,34 +171,34 @@ class ActivityLogger
      */
     protected function normalizeCauser($modelOrId): Model
     {
-        if ($modelOrId instanceof Model) {
+        if($modelOrId instanceof Model) {
             return $modelOrId;
         }
-
-        if ($model = $this->auth->getProvider()->retrieveById($modelOrId)) {
+        
+        if($model = $this->auth->getProvider()->retrieveById($modelOrId)) {
             return $model;
         }
-
+        
         throw CouldNotLogActivity::couldNotDetermineUser($modelOrId);
     }
-
+    
     protected function replacePlaceholders(string $description, Activity $activity): string
     {
-        return preg_replace_callback('/:[a-z0-9._-]+/i', function ($match) use ($activity) {
+        return preg_replace_callback('/:[a-z0-9._-]+/i', function($match) use ($activity) {
             $match = $match[0];
-
-            $attribute = (string) string($match)->between(':', '.');
-
-            if (! in_array($attribute, ['subject', 'causer', 'properties'])) {
+            
+            $attribute = (string)string($match)->between(':', '.');
+            
+            if(!in_array($attribute, ['subject', 'causer', 'properties'])) {
                 return $match;
             }
-
+            
             $propertyName = substr($match, strpos($match, '.') + 1);
-
+            
             $attributeValue = $activity->$attribute;
-
+            
             $attributeValue = $attributeValue->toArray();
-
+            
             return array_get($attributeValue, $propertyName, $match);
         }, $description);
     }
